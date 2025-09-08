@@ -4,7 +4,7 @@ import axios from "axios";
 import { Carousel, Button, Row, Col, Card, Spinner, Alert } from "react-bootstrap";
 import { Calendar, Star, Clock } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
-
+import Api_url from "../config/config";
 const GroundDetails = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -34,7 +34,7 @@ const GroundDetails = () => {
   useEffect(() => {
     if (!groundFromNav) {
       axios
-        .get(`https://sports-vvki.onrender.com/ground/${id}`)
+        .get(`${Api_url}/ground/${id}`)
         .then((res) => setGround(res.data.data))
         .catch(() => setError("Failed to load ground details."))
         .finally(() => setLoading(false));

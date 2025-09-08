@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
-
+import Api_url from '../config/config';
 const Dashboard = () => {
   const [selectedSport, setSelectedSport] = useState(null);
   const [grounds, setGrounds] = useState([]);
@@ -15,7 +15,7 @@ const Dashboard = () => {
     setSelectedSport(sport);
     setLoading(true);
     try {
-      const response = await axios.get(`https://sports-vvki.onrender.com/${sport.toLowerCase()}`);
+      const response = await axios.get(`${Api_url}/${sport.toLowerCase()}`);
       setGrounds(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch grounds:', error);

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify'; // ✅ Import Toastify
 import 'react-toastify/dist/ReactToastify.css';          // ✅ Import Toastify CSS
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Api_url from '../config/config.js'
 
 const Login = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const handleLogin = async () => {
   setError("");
 
   try {
-    const response = await fetch("https://sports-vvki.onrender.com/login", {
+    const response = await fetch(`${Api_url}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,7 +67,7 @@ const handleLoginGuest = async () => {
   setError("");
 
   try {
-    const response = await fetch("https://sports-vvki.onrender.com/login", {
+    const response = await fetch(`${Api_url}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

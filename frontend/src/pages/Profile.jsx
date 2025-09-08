@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import Api_url from '../config/config'; 
 const Profile = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9,7 +9,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const response = await axios.get(`https://sports-vvki.onrender.com/profile/${email}`);
+        const response = await axios.get(`${Api_url}/profile/${email}`);
         setBookings(response.data.bookings || []);
       } catch (err) {
         console.error('Error fetching bookings:', err);

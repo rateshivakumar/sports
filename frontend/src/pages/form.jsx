@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import Api_url from "../config/config";
 const BookingForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ const BookingForm = () => {
 
   try {
     // Step 1: Send confirmation email
-    const emailResponse = await axios.post("https://sports-vvki.onrender.com/send-email", {
+    const emailResponse = await axios.post(`${Api_url}/send-email`, {
       email,
       username,
       groundName: ground?.name,
@@ -56,7 +56,7 @@ const BookingForm = () => {
 
     // Step 2: Save booking in DB
     const bookingResponse = await axios.post(
-      "https://sports-vvki.onrender.com/booking",
+      `${Api_url}/booking`,
       {
         email,
         username,

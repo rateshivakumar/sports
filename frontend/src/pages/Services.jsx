@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import Api_url from '../config/config';
 
 function Grounds() {
   const [grounds, setGrounds] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("https://sports-vvki.onrender.com/grounds")
+    fetch(`${Api_url}/grounds`)
       .then(res => res.json())
       .then(data => {
         console.log("Fetched data:", data);

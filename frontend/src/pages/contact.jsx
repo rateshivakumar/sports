@@ -6,6 +6,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+import Api_url from '../config/config.js'
 
 const Contact = () => {
   const handleSubmit = async (e) => {
@@ -29,7 +30,7 @@ const Contact = () => {
     console.log('Submitting form data:', formData);
 
     try {
-      const response = await axios.post('https://sports-vvki.onrender.com/feedback', formData, {
+      const response = await axios.post(`${Api_url}/feedback`, formData, {
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'

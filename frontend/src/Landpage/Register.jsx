@@ -4,6 +4,7 @@ import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ToastContainer, toast } from "react-toastify"; // import Toastify
 import "react-toastify/dist/ReactToastify.css"; // import Toastify styles
+import Api_url from '../config/config.js'
 
 const Register = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post("https://sports-vvki.onrender.com/user", {
+      const response = await axios.post(`${Api_url}/user`, {
         name,
         email,
         password,
