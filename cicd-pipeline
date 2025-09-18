@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    environment {
+        WORKDIR = "${env.WORKSPACE}"              // Jenkins workspace
+        ARTIFACT_DIR = "${WORKDIR}/artifacts"     // Where build artifacts go
+        REPO_URL = "https://github.com/bharath820/sports.git"
+        BRANCH = "main"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code from GitHub...'
+                git branch: "${BRANCH}", url: "${REPO_URL}"
+            }
+        }
+
+        stage('Install Backend Dependencies') {
+            steps {
+                echo 'Installing backend Node.js dependencies...'
+                dir("${WORKDIR}/backend") {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Install Frontend Dependencies') {
+            steps {
+                echo 'Installing frontend Node.js dependencies...'
+                dir("${WORKDIR}/frontend") {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Build Frontend') {
+    steps {
+        echo 'Building React frontend...'
+        dir("${WORKDIR}/frontend") {
+            sh 'CI=false npm run build'
+        }
+    }
+}
+
+
+        stage('Archive Artifacts') {
+            steps {
+                echo 'Archiving frontend build artifacts...'
+                dir("${WORKDIR}") {
+                    sh """
+                    mkdir -p ${ARTIFACT_DIR}
+                    cp -r frontend/build/* ${ARTIFACT_DIR}/
+                    """
+                }
+                archiveArtifacts artifacts: 'artifacts/**', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs.'
+        }
+    }
+}
