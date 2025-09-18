@@ -1,0 +1,173 @@
+🚀 Full Deployment Guide: Sports App (Frontend + Backend)
+1️⃣ Create Server (EC2 on AWS)
+
+Launch Amazon Linux 2 or Ubuntu 22.04 EC2 instance.
+
+Choose t2.micro (free tier) or bigger.
+
+Open Security Group:
+
+TCP 22 (SSH)
+
+TCP 80 (HTTP frontend)
+
+TCP 3001 (Backend API)
+
+Connect via SSH:
+
+ssh -i your-key.pem ec2-user@<EC2_PUBLIC_IP>
+
+2️⃣ Install Required Packages
+
+Run as root:
+
+# Update
+sudo yum update -y   # Amazon Linux
+# OR sudo apt update -y (Ubuntu)
+
+# Install Docker & Git
+sudo yum install -y docker git
+sudo service docker start
+sudo usermod -aG docker ec2-user
+
+# Install Jenkins (Amazon Linux 2)
+sudo yum install -y java-11-amazon-corretto
+wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+sudo yum install -y jenkins
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+
+# Check services
+docker --version
+jenkins --version
+
+3️⃣ Clone Your Code
+cd /home/ec2-user
+git clone https://github.com/bharath820/sports.git
+
+4️⃣ Dockerfiles
+Backend (sports/backend/Dockerfile)
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3001
+CMD ["node", "server.js"]
+
+Frontend (sports/frontend/Dockerfile)
+# Stage 1: Build
+FROM node:18-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+5️⃣ Jenkins Pipeline (CI/CD)
+
+In Jenkins → New Item → Pipeline → Paste this:
+
+pipeline {
+    agent any
+
+    environment {
+        BACKEND_IMAGE = "rateshivakumar/sports-backend:latest"
+        FRONTEND_IMAGE = "rateshivakumar/sports-frontend:latest"
+        REPO_URL = "https://github.com/bharath820/sports.git"
+        BRANCH = "main"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: "${BRANCH}", url: "${REPO_URL}"
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                dir("backend") {
+                    sh 'docker build -t $BACKEND_IMAGE .'
+                }
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                dir("frontend") {
+                    sh 'docker build -t $FRONTEND_IMAGE .'
+                }
+            }
+        }
+
+        stage('Push Images to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                        sh 'docker push $BACKEND_IMAGE'
+                        sh 'docker push $FRONTEND_IMAGE'
+                }
+            }
+        }
+
+        stage('Deploy Containers') {
+            steps {
+                sh '''
+                docker rm -f sports_app || true
+                docker rm -f sports_frontend || true
+
+                docker run -d --name sports_app -p 3001:3001 $BACKEND_IMAGE
+                docker run -d --name sports_frontend -p 80:80 $FRONTEND_IMAGE
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 Deployment Successful! Access app at http://<EC2_PUBLIC_IP>"
+        }
+        failure {
+            echo "❌ Pipeline failed! Check logs."
+        }
+    }
+}
+
+6️⃣ Jenkins Setup
+
+Go to http://<EC2_PUBLIC_IP>:8080
+
+Unlock Jenkins (cat /var/lib/jenkins/secrets/initialAdminPassword)
+
+Install plugins: Git, Docker Pipeline
+
+Add DockerHub credentials (ID = dockerhub-creds)
+
+7️⃣ Run Pipeline
+
+Start build → Jenkins will:
+
+Clone code
+
+Build backend & frontend images
+
+Push to DockerHub
+
+Run containers on EC2
+
+8️⃣ Access in Browser
+
+Frontend: 👉 http://<EC2_PUBLIC_IP>/
+
+Backend API: 👉 http://<EC2_PUBLIC_IP>:3001
+
+✅ Done! You now have CI/CD pipeline + EC2 server + Dockerized frontend + backend.
