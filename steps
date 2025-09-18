@@ -169,5 +169,341 @@ Run containers on EC2
 Frontend: 👉 http://<EC2_PUBLIC_IP>/
 
 Backend API: 👉 http://<EC2_PUBLIC_IP>:3001
-
+ 
 ✅ Done! You now have CI/CD pipeline + EC2 server + Dockerized frontend + backend.
+   ---------------------------------------------------------------------------------------------
+  -----------------------------------------------------------------------
+
+
+
+A — Files you’ll add to the repo
+
+Create a folder k8s/ at repo root. Put these files there.
+
+1) k8s/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sports-backend
+  labels:
+    app: sports-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sports-backend
+  template:
+    metadata:
+      labels:
+        app: sports-backend
+    spec:
+      containers:
+      - name: backend
+        image: rateshivakumar/sports-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3001
+        env:
+          - name: NODE_ENV
+            value: "production"
+          - name: MONGODB_URI
+            value: "<your-mongodb-uri>" # replace or use a Secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sports-backend
+spec:
+  selector:
+    app: sports-backend
+  ports:
+    - port: 3001
+      targetPort: 3001
+  type: ClusterIP
+
+2) k8s/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sports-frontend
+  labels:
+    app: sports-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sports-frontend
+  template:
+    metadata:
+      labels:
+        app: sports-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: rateshivakumar/sports-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sports-frontend
+spec:
+  selector:
+    app: sports-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+
+3) k8s/ingress.yaml (optional — for Minikube use minikube tunnel or NodePort instead)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sports-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sports-frontend
+            port:
+              number: 80
+
+
+Note: For EKS production, you'd typically use an AWS ALB Ingress Controller or AWS LoadBalancer service. I show a simple nginx ingress manifest; install nginx ingress controller where needed.
+
+B — Minikube flow (dev / test)
+1. Install minikube, kubectl, docker on your machine (or EC2)
+# install kubectl (example)
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+# install minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+2. Start minikube and enable ingress
+minikube start --driver=docker
+minikube addons enable ingress
+
+3. Build images and load into minikube
+
+You have two choices:
+
+A — Build locally and load into minikube:
+
+# from repo root
+docker build -t rateshivakumar/sports-backend:latest ./backend
+docker build -t rateshivakumar/sports-frontend:latest ./frontend
+
+minikube image load rateshivakumar/sports-backend:latest
+minikube image load rateshivakumar/sports-frontend:latest
+
+
+B — Let Kubernetes pull from DockerHub (ensure images pushed to DockerHub and cluster can access internet).
+
+4. Apply manifests
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/ingress.yaml   # optional
+
+5. Expose / access
+
+If using Ingress, get minikube IP:
+
+minikube ip
+curl http://$(minikube ip)/
+# or open browser to http://<minikube-ip>/
+
+
+If not using ingress, you can kubectl port-forward:
+
+kubectl port-forward svc/sports-frontend 8080:80
+# open http://localhost:8080
+
+C — EKS flow (production on AWS)
+1. Create EKS cluster (quick with eksctl)
+
+Install eksctl and awscli and configure aws credentials.
+
+# create a simple EKS cluster (example)
+eksctl create cluster --name sports-cluster --region us-east-1 --nodegroup-name standard-workers --node-type t3.medium --nodes 2
+
+
+This creates kubeconfig automatically. Verify:
+
+kubectl get nodes
+
+2. Push images to registry
+
+Make sure images are in a registry accessible to EKS — typically Docker Hub or ECR.
+
+Option: ECR (recommended for EKS)
+
+Create an ECR repo and push:
+
+aws ecr create-repository --repository-name sports-backend
+# login, tag and push steps (follow AWS ECR docs)
+
+
+If you use Docker Hub, ensure your nodes can pull (public/private) — for private Hub, create image pull secret in Kubernetes.
+
+3. Apply manifests
+
+Either use same k8s/ manifests but change image names to the ECR repo (or Docker Hub under your username):
+
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/frontend-deployment.yaml
+
+4. Expose frontend
+
+For EKS you typically use Service type LoadBalancer or use Ingress with AWS ALB Ingress controller.
+
+Example to expose frontend via LoadBalancer (replace sports-frontend service type in manifest to LoadBalancer):
+
+kind: Service
+metadata:
+  name: sports-frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: sports-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+
+
+Then:
+
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl get svc sports-frontend --watch
+# Wait for EXTERNAL-IP
+
+
+
+D — Jenkins pipeline: add Kubernetes deploy stage
+
+Add to your Jenkinsfile (after push images):
+stage('Deploy to Kubernetes') {
+  steps {
+    withKubeConfig([credentialsId: 'kubeconfig-cred']) {   // use Jenkins Kubernetes Credentials plugin or store kubeconfig
+      sh '''
+        kubectl apply -f k8s/backend-deployment.yaml
+        kubectl apply -f k8s/frontend-deployment.yaml
+        # optionally apply ingress:
+        kubectl apply -f k8s/ingress.yaml || true
+        # rollout restart to pick up latest image
+        kubectl rollout restart deployment/sports-backend || true
+        kubectl rollout restart deployment/sports-frontend || true
+      '''
+    }
+  }
+Jenkins setup notes
+
+Install Kubernetes CLI Plugin or Kubernetes Credentials Plugin to handle kubeconfig in Jenkins.
+
+Add kubeconfig as a secret file credential (ID kubeconfig-cred) or use AWS credential + aws eks update-kubeconfig inside the pipeline if deploying to EKS. Example for EKS:
+
+
+
+withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-creds']]) {
+  sh 'aws eks update-kubeconfig --name sports-cluster --region us-east-1'
+  sh 'kubectl apply -f k8s/'
+}
+
+
+
+
+
+E — Important production considerations
+
+Secrets: do not hardcode MONGODB_URI. Use Kubernetes Secrets and mount them as env vars.
+
+Health checks: add readinessProbe and livenessProbe to deployments to let K8s manage restarts.
+
+Image tags: use immutable tags (e.g. commit SHA) rather than latest. Update manifests dynamically in pipeline (sed or kustomize/Helm).
+
+Autoscaling: configure HPA for pods if needed.
+
+Ingress & TLS: use cert-manager + Ingress to enable HTTPS for production.
+
+F — Quick sanity checklist & commands
+
+Test locally with Minikube:
+
+minikube start
+
+minikube image load rateshivakumar/sports-backend:latest
+
+kubectl apply -f k8s/
+
+minikube service sports-frontend --url
+
+For EKS:
+
+eksctl create cluster ... (or use existing cluster)
+
+aws eks update-kubeconfig --name <cluster>
+
+kubectl apply -f k8s/
+
+kubectl get svc → find LoadBalancer EXTERNAL-IP
+
+To update images in manifests dynamically in Jenkins:
+
+sed -i "s|image: .*|image: ${BACKEND_IMAGE}|" k8s/backend-deployment.yaml
+
+G — Example: full Jenkinsfile snippet (build → push → deploy to EKS)
+pipeline {
+  agent any
+  environment {
+    BACKEND_IMAGE = "123456789012.dkr.ecr.us-east-1.amazonaws.com/sports-backend:${GIT_COMMIT}"
+    FRONTEND_IMAGE = "123456789012.dkr.ecr.us-east-1.amazonaws.com/sports-frontend:${GIT_COMMIT}"
+    REPO = "https://github.com/bharath820/sports.git"
+  }
+  stages {
+    stage('Checkout') { steps { git url: "${REPO}", branch: 'main' } }
+    stage('Build & Push Images') {
+      steps {
+        sh 'docker build -t $BACKEND_IMAGE ./backend'
+        sh 'docker build -t $FRONTEND_IMAGE ./frontend'
+        withCredentials([[$class:'AmazonWebServicesCredentialsBinding',credentialsId:'aws-creds',accessKeyVariable:'AWS_ACCESS_KEY_ID',secretKeyVariable:'AWS_SECRET_ACCESS_KEY']]) {
+          sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com'
+          sh 'docker push $BACKEND_IMAGE'
+          sh 'docker push $FRONTEND_IMAGE'
+        }
+      }
+    }
+    stage('Deploy to EKS') {
+      steps {
+        withCredentials([[$class:'AmazonWebServicesCredentialsBinding',credentialsId:'aws-creds',accessKeyVariable:'AWS_ACCESS_KEY_ID',secretKeyVariable:'AWS_SECRET_ACCESS_KEY']]) {
+          sh '''
+            aws eks update-kubeconfig --name sports-cluster --region us-east-1
+            kubectl set image deployment/sports-backend backend=${BACKEND_IMAGE} --record
+            kubectl set image deployment/sports-frontend frontend=${FRONTEND_IMAGE} --record
+            kubectl rollout status deployment/sports-backend
+            kubectl rollout status deployment/sports-frontend
+          '''
+        }
+      }
+    }
+  }
+}
+
+
+
+
+}
+
+
+
+
+Access via the External IP / DNS returned by the LoadBalancer.
