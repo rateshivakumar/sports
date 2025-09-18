@@ -1,7 +1,7 @@
 
 // models/Booking.js
 
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema({
   email: {
@@ -36,5 +36,6 @@ const bookingSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("booking", bookingSchema);
+const Booking = mongoose.model("booking", bookingSchema);
 
+export default Booking;

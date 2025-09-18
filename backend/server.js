@@ -1,28 +1,27 @@
 // Required imports
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
 
-const nodemailer = require("nodemailer");
-const mongoose = require("mongoose");
-
-
+import nodemailer from "nodemailer";
+import mongoose from "mongoose";
 
 
 
-const User=require("./Models/user");
-const { default: connectDB } = require("./config/connectDB.js");
-const { default: sportModel } = require("./Models/Grounds.js");
-const {default: sportModel1}=require("./Models/cricket.js")
-const { default: sportModel2 } = require("./Models/badminton.js");
-const { default: sportModel3 } = require("./Models/basketball.js");
-const { default: sportModel4 } = require("./Models/hockey.js");  
-const { default: sportModel5 } = require("./Models/tennis.js");
-const { default: sportModel6 } = require("./Models/volleyball.js");
-const Booking = require("./Models/booking");
-const Feedback=require("./Models/feedback.js")
+
+import User from "./Models/user.js";
+import connectDB from "./config/db.js";
+import sportModel from "./Models/sport.js";
+import sportModel1 from "./Models/cricket.js";
+import sportModel2 from "./Models/badminton.js";
+import sportModel3 from "./Models/basketball.js"; 
+import sportModel4 from "./Models/hockey.js"; 
+import sportModel5 from "./Models/tennis.js";
+import sportModel6 from "./Models/volleyball.js"; 
+import Booking from "./Models/booking.js";
+import Feedback from "./Models/feedback.js";
 
 
 // Initialize environment variables
