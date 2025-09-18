@@ -12,8 +12,8 @@ import mongoose from "mongoose";
 
 
 import User from "./Models/user.js";
-import connectDB from "./config/db.js";
-import sportModel from "./Models/sport.js";
+import connectDB from "./config/connectDB.js";
+import sportModel from "./Models/Grounds.js";
 import sportModel1 from "./Models/cricket.js";
 import sportModel2 from "./Models/badminton.js";
 import sportModel3 from "./Models/basketball.js"; 
