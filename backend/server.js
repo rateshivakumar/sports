@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 
 import nodemailer from "nodemailer";
@@ -33,7 +33,9 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.raw({ type: 'application/json' })); // ✅ Needed for Stripe webhooks
-require("dotenv").config();
+dotenv.config();
+
+connectDB();
 
 
 app.use(cors({
