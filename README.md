@@ -52,4 +52,10 @@ A full-stack web application that allows users to browse, select, and book sport
 
 =======
 # sports
->>>>>>> 9f74549 (ipdated)
+>>>>>>> 9f74549 (ipdated)<img width="1920" height="1080" alt="Screenshot (539)" src="https://github.com/user-attachments/assets/be6564ac-d8b0-4ca5-8552-bb0a276cd0c7" />
+
+>>>>>>>
+
+<img width="1920" height="1080" alt="Screenshot (540)" src="https://github.com/user-attachments/assets/c00b09d7-f8c5-4475-b49b-01b5de154e2a" />
+
+<img width="1920" height="1080" alt="Screenshot (538)" src="https://github.com/user-attachments/assets/de6c0913-727a-4a95-87a4-db763fd01082" />
